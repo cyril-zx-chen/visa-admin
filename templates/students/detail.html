@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}{{ student.name }} — Visa Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="{{ url_for('students.list_students') }}"
+     class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i> All Students
+  </a>
+</div>
+
+<!-- Student hero card -->
+<div class="student-hero mb-4">
+  <div class="student-avatar">{{ student.name[0].upper() }}</div>
+  <div class="flex-grow-1 min-w-0">
+    <div class="fw-bold fs-5 mb-1">{{ student.name }}</div>
+    <div style="opacity:.8; font-size:.85rem">{{ student.email }}</div>
+    {% if student.package_name %}
+      <span class="badge mt-2" style="background:rgba(255,255,255,.25); color:#fff; font-size:.75rem">
+        <i class="bi bi-collection-fill me-1"></i>{{ student.package_name }}
+      </span>
+    {% endif %}
+    {% if submissions %}
+      <div class="mt-3">
+        <div class="d-flex justify-content-between mb-1" style="font-size:.78rem; opacity:.8">
+          <span>Required documents</span>
+          <span>{{ required_done }}/{{ required_total }}</span>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" style="width:{{ progress }}%"></div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Documents table -->
+{% if submissions %}
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">
+        <i class="bi bi-file-earmark-text me-2 text-muted"></i>Document Checklist
+      </span>
+      <span class="text-muted" style="font-size:.8rem">{{ submissions | length }} slot{{ 's' if submissions | length != 1 }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-card mb-0">
+        <thead>
+          <tr>
+            <th>Document</th>
+            <th class="text-center" style="width:120px">Status</th>
+            <th>File</th>
+            <th style="width:140px">Received</th>
+            <th style="width:220px">Notes</th>
+            <th class="text-center" style="width:200px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in submissions %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ sub.slot_name }}</div>
+                <div class="mt-1">
+                  {% if sub.is_required %}
+                    <span class="req-badge">Required</span>
+                  {% else %}
+                    <span class="opt-badge">Optional</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="text-center">
+                {% if sub.status == 'received' %}
+                  <span class="status-badge-received">
+                    <i class="bi bi-check-circle-fill"></i> Received
+                  </span>
+                {% else %}
+                  <span class="status-badge-pending">
+                    <i class="bi bi-clock-fill"></i> Pending
+                  </span>
+                {% endif %}
+              </td>
+              <td>
+                {% if sub.stored_path and sub.filename %}
+                  <a href="{{ url_for('submissions.download_file', sub_id=sub.id) }}"
+                     class="d-flex align-items-center gap-1"
+                     style="color:var(--purple); font-size:.83rem">
+                    <i class="bi bi-file-earmark-arrow-down"></i>
+                    {{ sub.filename | truncate(28) }}
+                  </a>
+                {% elif sub.status == 'received' %}
+                  <span class="text-muted" style="font-size:.8rem">
+                    <i class="bi bi-check2 me-1"></i>Marked manually
+                  </span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="text-muted" style="font-size:.8rem">
+                {{ sub.received_at[:16].replace('T',' ') if sub.received_at else '—' }}
+              </td>
+              <td style="font-size:.8rem">
+                {% if sub.notes %}
+                  <span class="text-muted" data-bs-toggle="tooltip" title="{{ sub.notes }}">
+                    {{ sub.notes | truncate(36) }}
+                  </span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                  {% if sub.status == 'pending' %}
+                    <button class="btn btn-sm btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#uploadModal{{ sub.id }}">
+                      <i class="bi bi-upload me-1"></i>Upload
+                    </button>
+                    <form method="POST" action="{{ url_for('submissions.mark_received', sub_id=sub.id) }}" class="d-inline">
+                      <button type="submit" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-check-lg me-1"></i>Mark Received
+                      </button>
+                    </form>
+                  {% else %}
+                    <button class="btn btn-sm btn-outline-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#uploadModal{{ sub.id }}">
+                      <i class="bi bi-arrow-repeat me-1"></i>Re-upload
+                    </button>
+                    <form method="POST" action="{{ url_for('submissions.mark_pending', sub_id=sub.id) }}" class="d-inline">
+                      <button type="submit" class="btn btn-sm btn-outline-warning"
+                              data-confirm="Revert '{{ sub.slot_name }}' back to pending?">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Undo
+                      </button>
+                    </form>
+                  {% endif %}
+                  <button class="btn btn-sm btn-outline-secondary"
+                          data-bs-toggle="modal"
+                          data-bs-target="#notesModal{{ sub.id }}">
+                    <i class="bi bi-pencil-fill"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Upload modal -->
+            <div class="modal fade" id="uploadModal{{ sub.id }}" tabindex="-1">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">
+                      <i class="bi bi-upload me-2"></i>Upload: {{ sub.slot_name }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <form method="POST"
+                        action="{{ url_for('submissions.upload_file', sub_id=sub.id) }}"
+                        enctype="multipart/form-data">
+                    <div class="modal-body">
+                      <label class="form-label">Select file</label>
+                      <input type="file" name="file" class="form-control" required>
+                      <div class="form-text mt-2">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Any file type accepted — PDF, JPG, PNG, DOCX, etc.
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                      <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-upload me-1"></i>Upload
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notes modal -->
+            <div class="modal fade" id="notesModal{{ sub.id }}" tabindex="-1">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">
+                      <i class="bi bi-pencil-fill me-2"></i>Notes: {{ sub.slot_name }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                  </div>
+                  <form method="POST" action="{{ url_for('submissions.update_notes', sub_id=sub.id) }}">
+                    <div class="modal-body">
+                      <textarea name="notes" class="form-control" rows="4"
+                                placeholder="Add notes about this document…">{{ sub.notes or '' }}</textarea>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                      <button type="submit" class="btn btn-primary btn-sm">Save Notes</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+{% else %}
+  <div class="card">
+    <div class="empty-state">
+      <i class="bi bi-file-earmark-x"></i>
+      <h6>No documents assigned</h6>
+      <p>
+        {% if not student.package_name %}
+          This student has no visa package. Assign one via CSV import or edit.
+        {% else %}
+          The assigned package has no document slots yet.
+          <a href="{{ url_for('packages.list_packages') }}">Add slots to the package.</a>
+        {% endif %}
+      </p>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

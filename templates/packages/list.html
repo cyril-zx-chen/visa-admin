@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Packages — Visa Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Visa Packages</h1>
+    <p class="page-subtitle">Document templates assigned to students</p>
+  </div>
+  <a href="{{ url_for('packages.new_package_form') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i> New Package
+  </a>
+</div>
+
+<div class="card">
+  {% if not packages %}
+    <div class="empty-state">
+      <i class="bi bi-collection"></i>
+      <h6>No packages yet</h6>
+      <p>Create a visa package template, then add document slots to it.</p>
+      <a href="{{ url_for('packages.new_package_form') }}" class="btn btn-primary btn-sm mt-2">
+        <i class="bi bi-plus-lg me-1"></i> New Package
+      </a>
+    </div>
+  {% else %}
+    <div class="table-responsive">
+      <table class="table table-card mb-0">
+        <thead>
+          <tr>
+            <th>Package Name</th>
+            <th class="text-center">Slots</th>
+            <th class="text-center">Students</th>
+            <th>Created</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pkg in packages %}
+            {% set c = counts[pkg.id] %}
+            <tr>
+              <td>
+                <a href="{{ url_for('packages.package_detail', pkg_id=pkg.id) }}"
+                   class="fw-semibold" style="color:var(--purple)">
+                  <i class="bi bi-collection-fill me-2 text-muted"></i>{{ pkg.name }}
+                </a>
+              </td>
+              <td class="text-center">
+                <span class="badge bg-light text-secondary border">{{ c.slots }} slot{{ 's' if c.slots != 1 }}</span>
+              </td>
+              <td class="text-center">
+                <span class="badge bg-light text-secondary border">{{ c.students }} student{{ 's' if c.students != 1 }}</span>
+              </td>
+              <td class="text-muted" style="font-size:.82rem">{{ pkg.created_at[:10] }}</td>
+              <td class="text-center">
+                <div class="d-flex gap-1 justify-content-center">
+                  <a href="{{ url_for('packages.package_detail', pkg_id=pkg.id) }}"
+                     class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Edit">
+                    <i class="bi bi-pencil-fill"></i>
+                  </a>
+                  <form method="POST" action="{{ url_for('packages.delete_package', pkg_id=pkg.id) }}" class="d-inline">
+                    {% if c.students > 0 %}
+                      <button type="button" class="btn btn-sm btn-outline-danger" disabled
+                              data-bs-toggle="tooltip"
+                              title="{{ c.students }} student(s) enrolled — reassign or delete them first">
+                        <i class="bi bi-trash3-fill"></i>
+                      </button>
+                    {% else %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger"
+                              data-confirm="Delete package '{{ pkg.name }}'? This cannot be undone.">
+                        <i class="bi bi-trash3-fill"></i>
+                      </button>
+                    {% endif %}
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

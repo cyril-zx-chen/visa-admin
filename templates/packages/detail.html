@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}{{ package.name }} — Visa Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ package.name }}</h1>
+    <p class="page-subtitle">{{ slots | length }} slot{{ 's' if slots | length != 1 }} · {{ students | length }} student{{ 's' if students | length != 1 }} enrolled</p>
+  </div>
+  <a href="{{ url_for('packages.list_packages') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i> All Packages
+  </a>
+</div>
+
+<div class="row g-3">
+  <!-- Left: document slots -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-header-title"><i class="bi bi-file-earmark-text me-2 text-muted"></i>Document Slots</span>
+        <span class="badge bg-secondary">{{ slots | length }}</span>
+      </div>
+
+      {% if not slots %}
+        <div class="empty-state py-4">
+          <i class="bi bi-file-earmark-plus" style="font-size:2rem; color:var(--border)"></i>
+          <p class="mt-2 mb-0" style="color:var(--text-muted); font-size:.83rem">No slots yet. Add one below.</p>
+        </div>
+      {% else %}
+        <div class="table-responsive">
+          <table class="table mb-0" style="font-size:.855rem">
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>Slot Name</th>
+                <th class="text-center" style="width:110px">Type</th>
+                <th class="text-center" style="width:160px">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for slot in slots %}
+                <tr>
+                  <td class="text-muted">{{ loop.index }}</td>
+                  <td class="fw-semibold">{{ slot.name }}</td>
+                  <td class="text-center">
+                    {% if slot.is_required %}
+                      <span class="req-badge">Required</span>
+                    {% else %}
+                      <span class="opt-badge">Optional</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <div class="d-flex gap-1 justify-content-center">
+                      <form method="POST"
+                            action="{{ url_for('packages.toggle_slot_required', pkg_id=package.id, slot_id=slot.id) }}"
+                            class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                data-bs-toggle="tooltip"
+                                title="Make {{ 'optional' if slot.is_required else 'required' }}">
+                          <i class="bi bi-arrow-left-right"></i>
+                        </button>
+                      </form>
+                      <form method="POST"
+                            action="{{ url_for('packages.delete_slot', pkg_id=package.id, slot_id=slot.id) }}"
+                            class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                data-confirm="Delete slot '{{ slot.name }}'? This also removes all student submissions for this slot.">
+                          <i class="bi bi-trash3-fill"></i>
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+
+      <!-- Add slot form -->
+      <div class="p-3 border-top bg-light" style="border-radius:0 0 var(--radius) var(--radius)">
+        <form method="POST" action="{{ url_for('packages.add_slot', pkg_id=package.id) }}"
+              class="d-flex gap-2 align-items-end flex-wrap">
+          <div class="flex-grow-1">
+            <label class="form-label">New slot name</label>
+            <input type="text" name="name" class="form-control form-control-sm"
+                   placeholder="e.g. Bank Statement" required>
+          </div>
+          <div style="min-width:130px">
+            <label class="form-label">Type</label>
+            <select name="is_required" class="form-select form-select-sm">
+              <option value="1">Required</option>
+              <option value="0">Optional</option>
+            </select>
+          </div>
+          <div>
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="bi bi-plus-lg me-1"></i> Add Slot
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: enrolled students -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-header-title"><i class="bi bi-people-fill me-2 text-muted"></i>Enrolled Students</span>
+        <span class="badge bg-secondary">{{ students | length }}</span>
+      </div>
+
+      {% if not students %}
+        <div class="empty-state py-4">
+          <i class="bi bi-person-plus" style="font-size:2rem; color:var(--border)"></i>
+          <p class="mt-2 mb-0" style="color:var(--text-muted); font-size:.83rem">
+            No students yet. <a href="{{ url_for('students.import_form') }}">Import via CSV</a> to assign them here.
+          </p>
+        </div>
+      {% else %}
+        <div class="table-responsive">
+          <table class="table mb-0" style="font-size:.855rem">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th class="text-center">View</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in students %}
+                <tr>
+                  <td class="fw-semibold">{{ s.name }}</td>
+                  <td class="text-muted" style="font-size:.8rem">{{ s.email }}</td>
+                  <td class="text-center">
+                    <a href="{{ url_for('students.student_detail', student_id=s.id) }}"
+                       class="btn btn-sm btn-outline-secondary">
+                      <i class="bi bi-eye-fill"></i>
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Danger zone -->
+    <div class="card mt-3 border-danger" style="border-color:#fee2e2 !important">
+      <div class="card-header" style="background:#fff5f5; border-bottom:1px solid #fee2e2">
+        <span class="card-header-title text-danger">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Danger Zone
+        </span>
+      </div>
+      <div class="p-3">
+        <p class="text-muted mb-2" style="font-size:.83rem">
+          Deleting this package is permanent. Students must be removed first.
+        </p>
+        <form method="POST" action="{{ url_for('packages.delete_package', pkg_id=package.id) }}">
+          {% if students %}
+            <button type="button" class="btn btn-sm btn-outline-danger" disabled
+                    data-bs-toggle="tooltip"
+                    title="{{ students | length }} student(s) enrolled — delete or reassign them first">
+              <i class="bi bi-trash3-fill me-1"></i> Delete Package
+            </button>
+          {% else %}
+            <button type="submit" class="btn btn-sm btn-outline-danger"
+                    data-confirm="Delete package '{{ package.name }}'? This cannot be undone.">
+              <i class="bi bi-trash3-fill me-1"></i> Delete Package
+            </button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

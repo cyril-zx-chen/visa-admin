@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}New Student — Visa Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">New Student</h1>
+    <p class="page-subtitle">Add a student manually</p>
+  </div>
+  <a href="{{ url_for('students.list_students') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i> Back
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('students.create_student') }}">
+          <div class="mb-3">
+            <label for="name" class="form-label">Full Name</label>
+            <input type="text" class="form-control" id="name" name="name"
+                   placeholder="e.g. Jane Smith" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email Address</label>
+            <input type="email" class="form-control" id="email" name="email"
+                   placeholder="e.g. jane@example.com" required>
+          </div>
+          <div class="mb-4">
+            <label for="package_id" class="form-label">Visa Package</label>
+            <select class="form-select" id="package_id" name="package_id">
+              <option value="">— No package —</option>
+              {% for pkg in packages %}
+                <option value="{{ pkg.id }}">{{ pkg.name }}</option>
+              {% endfor %}
+            </select>
+            <div class="form-text mt-1">
+              Selecting a package auto-creates all document slots for this student.
+            </div>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-person-plus-fill me-1"></i> Add Student
+            </button>
+            <a href="{{ url_for('students.list_students') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

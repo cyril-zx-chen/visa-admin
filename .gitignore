@@ -1,0 +1,30 @@
+# Database & uploaded files — contain PII, never commit
+visa_admin.db
+documents/
+!documents/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+
+# uv
+.python-version
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
