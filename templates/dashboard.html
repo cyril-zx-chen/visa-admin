@@ -52,6 +52,49 @@
   </div>
 </div>
 
+<!-- Backup restore prompt -->
+{% if backup_prompt %}
+  <div class="card mb-4" style="border:1.5px solid #6366f1; background:#f5f3ff">
+    <div class="card-body p-4">
+      <div class="d-flex align-items-start gap-3">
+        <div class="stat-icon purple flex-shrink-0" style="width:42px; height:42px; font-size:1.2rem">
+          <i class="bi bi-cloud-arrow-down-fill"></i>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold mb-1" style="color:var(--purple)">Backup file detected</div>
+          <p class="text-muted mb-1" style="font-size:.875rem">
+            A backup file was found at:
+            <code style="font-size:.8rem">{{ backup_info.path }}</code>
+          </p>
+          {% if backup_info.exported_at %}
+            <p class="text-muted mb-3" style="font-size:.82rem">
+              Last saved: {{ backup_info.exported_at[:19].replace('T',' ') }} UTC
+            </p>
+          {% endif %}
+          <p class="text-muted mb-3" style="font-size:.875rem">
+            The database appears empty. Would you like to restore from this backup?
+          </p>
+          <div class="d-flex gap-2 flex-wrap">
+            <form method="POST" action="{{ url_for('settings.restore_from_path') }}" class="d-inline">
+              <input type="hidden" name="replace_existing" value="1">
+              <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Yes, restore now
+              </button>
+            </form>
+            <a href="{{ url_for('settings.settings_page') }}" class="btn btn-outline-secondary btn-sm">
+              Go to Settings
+            </a>
+            <button type="button" class="btn btn-link btn-sm text-muted"
+                    onclick="localStorage.setItem('dismiss-backup-prompt','1'); this.closest('.card').remove()">
+              Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
 <!-- Global status filter -->
 {% if data %}
   <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
@@ -251,6 +294,18 @@
 
 {% block extra_js %}
 <script>
+// ── Backup prompt dismiss ─────────────────────────────────────────
+(function () {
+  {% if not backup_prompt %}
+    localStorage.removeItem('dismiss-backup-prompt');
+  {% else %}
+    if (localStorage.getItem('dismiss-backup-prompt') === '1') {
+      var el = document.querySelector('.card[style*="6366f1"]');
+      if (el) el.remove();
+    }
+  {% endif %}
+})();
+
 // ── Clickable rows ────────────────────────────────────────────────
 document.querySelectorAll('.clickable-row').forEach(function (row) {
   row.addEventListener('click', function () {

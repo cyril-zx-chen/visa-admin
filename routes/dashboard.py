@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template
 import models
+import utils
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -26,4 +27,18 @@ def index():
         "pending":  required_pending,
     }
 
-    return render_template("dashboard.html", data=data, unassigned=unassigned, stats=stats)
+    # Suggest restore if DB is empty but a backup file exists
+    backup_prompt = (
+        total_students == 0 and total_packages == 0
+        and utils.backup_file_info()["exists"]
+    )
+    backup_info = utils.backup_file_info() if backup_prompt else None
+
+    return render_template(
+        "dashboard.html",
+        data=data,
+        unassigned=unassigned,
+        stats=stats,
+        backup_prompt=backup_prompt,
+        backup_info=backup_info,
+    )
