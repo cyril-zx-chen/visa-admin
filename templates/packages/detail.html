@@ -59,10 +59,11 @@
           <table class="table mb-0" style="font-size:.855rem">
             <thead>
               <tr>
-                <th style="width:40px">#</th>
+                <th style="width:36px">#</th>
                 <th>Slot Name</th>
-                <th class="text-center" style="width:110px">Type</th>
-                <th class="text-center" style="width:160px">Actions</th>
+                <th>Preferred Filename</th>
+                <th class="text-center" style="width:100px">Type</th>
+                <th class="text-center" style="width:130px">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -70,6 +71,36 @@
                 <tr>
                   <td class="text-muted">{{ loop.index }}</td>
                   <td class="fw-semibold">{{ slot.name }}</td>
+                  <td>
+                    <div class="d-flex align-items-center gap-1">
+                      <span id="pn-display-{{ slot.id }}" class="text-muted" style="font-size:.82rem">
+                        {% if slot.preferred_name %}
+                          <code style="font-size:.78rem">{{ slot.preferred_name }}_yyyy_mm_dd…</code>
+                        {% else %}
+                          <span class="text-muted">—</span>
+                        {% endif %}
+                      </span>
+                      <button class="btn btn-sm btn-link p-0 ms-1 text-muted"
+                              style="font-size:.8rem"
+                              onclick="togglePnEdit({{ slot.id }})"
+                              id="pn-edit-btn-{{ slot.id }}"
+                              data-bs-toggle="tooltip" title="Set preferred filename">
+                        <i class="bi bi-pencil-fill"></i>
+                      </button>
+                    </div>
+                    <form method="POST"
+                          action="{{ url_for('packages.set_slot_preferred_name', pkg_id=package.id, slot_id=slot.id) }}"
+                          id="pn-form-{{ slot.id }}" class="d-none d-flex gap-1 align-items-center mt-1">
+                      <input type="text" name="preferred_name"
+                             class="form-control form-control-sm"
+                             style="max-width:160px; font-family:monospace; font-size:.8rem"
+                             value="{{ slot.preferred_name or '' }}"
+                             placeholder="e.g. passport_copy">
+                      <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm"
+                              onclick="togglePnEdit({{ slot.id }})">✕</button>
+                    </form>
+                  </td>
                   <td class="text-center">
                     {% if slot.is_required %}
                       <span class="req-badge">Required</span>
@@ -110,11 +141,19 @@
         <form method="POST" action="{{ url_for('packages.add_slot', pkg_id=package.id) }}"
               class="d-flex gap-2 align-items-end flex-wrap">
           <div class="flex-grow-1">
-            <label class="form-label">New slot name</label>
+            <label class="form-label">Slot name</label>
             <input type="text" name="name" class="form-control form-control-sm"
                    placeholder="e.g. Bank Statement" required>
           </div>
-          <div style="min-width:130px">
+          <div style="min-width:160px">
+            <label class="form-label">
+              Preferred filename
+              <span class="text-muted fw-normal" style="font-size:.72rem">(optional)</span>
+            </label>
+            <input type="text" name="preferred_name" class="form-control form-control-sm font-mono"
+                   placeholder="e.g. bank_statement">
+          </div>
+          <div style="min-width:120px">
             <label class="form-label">Type</label>
             <select name="is_required" class="form-select form-select-sm">
               <option value="1">Required</option>
@@ -204,4 +243,19 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePnEdit(slotId) {
+  const display = document.getElementById('pn-display-' + slotId);
+  const form    = document.getElementById('pn-form-' + slotId);
+  const btn     = document.getElementById('pn-edit-btn-' + slotId);
+  const hidden  = form.classList.contains('d-none');
+  display.classList.toggle('d-none', hidden);
+  btn.classList.toggle('d-none', hidden);
+  form.classList.toggle('d-none', !hidden);
+  if (hidden) form.querySelector('input[name="preferred_name"]').focus();
+}
+</script>
 {% endblock %}

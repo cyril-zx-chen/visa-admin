@@ -1,6 +1,7 @@
 import csv
 import io
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 import config
 
@@ -27,11 +28,14 @@ def make_student_dir(student_name: str) -> Path:
     return folder
 
 
-def stored_file_path(student_name: str, slot_name: str, original_filename: str) -> Path:
+def stored_file_path(student_name: str, slot_name: str, original_filename: str,
+                     preferred_name: str | None = None) -> Path:
     ext = Path(original_filename).suffix.lower()
-    safe_slot = re.sub(r"[^\w\-]", "", slot_name.strip().lower().replace(" ", "_"))
+    timestamp = datetime.now(timezone.utc).strftime("%Y_%m_%d_%H_%M_%S")
+    base = preferred_name if preferred_name and preferred_name.strip() else slot_name
+    safe = re.sub(r"[^\w\-]", "", base.strip().lower().replace(" ", "_"))
     folder = get_documents_dir() / to_folder_name(student_name)
-    return folder / f"{safe_slot}{ext}"
+    return folder / f"{safe}_{timestamp}{ext}"
 
 
 def write_auto_backup() -> None:

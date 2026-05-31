@@ -48,19 +48,28 @@ def package_detail(pkg_id):
 
 @packages_bp.route("/<int:pkg_id>/slots/add", methods=["POST"])
 def add_slot(pkg_id):
-    name = request.form.get("name", "").strip()
-    is_required = request.form.get("is_required") == "1"
+    name           = request.form.get("name", "").strip()
+    is_required    = request.form.get("is_required") == "1"
+    preferred_name = request.form.get("preferred_name", "").strip() or None
     if not name:
         flash("Slot name cannot be empty.", "danger")
         return redirect(url_for("packages.package_detail", pkg_id=pkg_id))
     try:
-        slot_id = models.add_slot(pkg_id, name, is_required)
+        slot_id = models.add_slot(pkg_id, name, is_required, preferred_name=preferred_name)
         # backfill a submission row for every student already enrolled in this package
         for student in models.get_students_for_package(pkg_id):
             models.create_submission(student["id"], slot_id)
         flash(f'Slot "{name}" added.', "success")
     except sqlite3.IntegrityError:
         flash(f'A slot named "{name}" already exists in this package.', "danger")
+    return redirect(url_for("packages.package_detail", pkg_id=pkg_id))
+
+
+@packages_bp.route("/<int:pkg_id>/slots/<int:slot_id>/set-preferred-name", methods=["POST"])
+def set_slot_preferred_name(pkg_id, slot_id):
+    preferred_name = request.form.get("preferred_name", "").strip() or None
+    models.set_slot_preferred_name(slot_id, preferred_name)
+    flash("Preferred filename updated.", "success")
     return redirect(url_for("packages.package_detail", pkg_id=pkg_id))
 
 

@@ -12,7 +12,8 @@ def _get_sub_student_slot(sub_id):
     from database import get_db
     conn = get_db()
     row = conn.execute("""
-        SELECT ds.*, st.name AS student_name, sl.name AS slot_name
+        SELECT ds.*, st.name AS student_name, sl.name AS slot_name,
+               sl.preferred_name AS slot_preferred_name
         FROM document_submissions ds
         JOIN students st ON st.id = ds.student_id
         JOIN document_slots sl ON sl.id = ds.slot_id
@@ -34,7 +35,10 @@ def upload_file(sub_id):
         return redirect(url_for("students.student_detail", student_id=row["student_id"]))
 
     utils.make_student_dir(row["student_name"])
-    dest = utils.stored_file_path(row["student_name"], row["slot_name"], file.filename)
+    dest = utils.stored_file_path(
+        row["student_name"], row["slot_name"], file.filename,
+        preferred_name=row["slot_preferred_name"]
+    )
     file.save(str(dest))
 
     display_name = secure_filename(file.filename)

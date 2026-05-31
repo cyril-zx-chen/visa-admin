@@ -87,7 +87,7 @@ def get_slots_for_package(pkg_id):
     return rows
 
 
-def add_slot(pkg_id, name, is_required):
+def add_slot(pkg_id, name, is_required, preferred_name=None):
     conn = get_db()
     row = conn.execute(
         "SELECT COALESCE(MAX(sort_order), 0) + 10 AS next_order FROM document_slots WHERE package_id = ?",
@@ -95,13 +95,23 @@ def add_slot(pkg_id, name, is_required):
     ).fetchone()
     next_order = row["next_order"]
     cur = conn.execute(
-        "INSERT INTO document_slots (package_id, name, is_required, sort_order) VALUES (?, ?, ?, ?)",
-        (pkg_id, name, 1 if is_required else 0, next_order)
+        "INSERT INTO document_slots (package_id, name, is_required, sort_order, preferred_name) VALUES (?,?,?,?,?)",
+        (pkg_id, name, 1 if is_required else 0, next_order, preferred_name or None)
     )
     conn.commit()
     slot_id = cur.lastrowid
     conn.close()
     return slot_id
+
+
+def set_slot_preferred_name(slot_id, preferred_name):
+    conn = get_db()
+    conn.execute(
+        "UPDATE document_slots SET preferred_name = ? WHERE id = ?",
+        (preferred_name or None, slot_id)
+    )
+    conn.commit()
+    conn.close()
 
 
 def copy_package(pkg_id) -> int:

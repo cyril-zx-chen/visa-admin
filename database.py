@@ -54,4 +54,12 @@ def init_db():
         );
     """)
     conn.commit()
+
+    # Migrations
+    try:
+        conn.execute("ALTER TABLE document_slots ADD COLUMN preferred_name TEXT")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
     conn.close()
