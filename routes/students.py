@@ -200,6 +200,13 @@ def student_detail(student_id):
     required_total = sum(1 for s in submissions if s["is_required"])
     required_done = sum(1 for s in submissions if s["is_required"] and s["status"] == "received")
     progress = int(required_done / required_total * 100) if required_total else 0
+
+    from pathlib import Path
+    missing_files = {
+        s["id"] for s in submissions
+        if s["stored_path"] and not Path(s["stored_path"]).exists()
+    }
+
     return render_template(
         "students/detail.html",
         student=student,
@@ -207,6 +214,7 @@ def student_detail(student_id):
         required_total=required_total,
         required_done=required_done,
         progress=progress,
+        missing_files=missing_files,
     )
 
 

@@ -98,13 +98,23 @@
               <td style="font-size:.83rem">
                 {% if sub.stored_path %}
                   {% set saved_name = sub.stored_path.replace('\\', '/').split('/')[-1] %}
-                  <a href="{{ url_for('submissions.download_file', sub_id=sub.id) }}"
-                     class="d-flex align-items-center gap-1"
-                     style="color:var(--purple)"
-                     data-bs-toggle="tooltip" title="{{ saved_name }}">
-                    <i class="bi bi-file-earmark-arrow-down flex-shrink-0"></i>
-                    <span class="font-mono" style="font-size:.78rem">{{ saved_name | truncate(28) }}</span>
-                  </a>
+                  {% if sub.id in missing_files %}
+                    <div class="d-flex align-items-center gap-1 text-danger"
+                         data-bs-toggle="tooltip"
+                         title="File not found on disk: {{ sub.stored_path }}">
+                      <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                      <span class="font-mono" style="font-size:.78rem; text-decoration:line-through">{{ saved_name | truncate(28) }}</span>
+                    </div>
+                    <div style="font-size:.72rem; color:var(--red)">File missing from disk</div>
+                  {% else %}
+                    <a href="{{ url_for('submissions.download_file', sub_id=sub.id) }}"
+                       class="d-flex align-items-center gap-1"
+                       style="color:var(--purple)"
+                       data-bs-toggle="tooltip" title="{{ sub.stored_path }}">
+                      <i class="bi bi-file-earmark-arrow-down flex-shrink-0"></i>
+                      <span class="font-mono" style="font-size:.78rem">{{ saved_name | truncate(28) }}</span>
+                    </a>
+                  {% endif %}
                 {% else %}
                   <span class="text-muted">—</span>
                 {% endif %}
