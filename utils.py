@@ -34,6 +34,48 @@ def stored_file_path(student_name: str, slot_name: str, original_filename: str) 
     return folder / f"{safe_slot}{ext}"
 
 
+def write_auto_backup() -> None:
+    import json
+    from models import get_setting, export_all_data
+    backup_path = get_setting("backup_path")
+    if not backup_path:
+        return
+    path = Path(backup_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = export_all_data()
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def read_backup_file() -> dict | None:
+    import json
+    from models import get_setting
+    backup_path = get_setting("backup_path")
+    if not backup_path:
+        return None
+    path = Path(backup_path)
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def backup_file_info() -> dict:
+    from models import get_setting
+    backup_path = get_setting("backup_path")
+    if not backup_path:
+        return {"configured": False, "path": None, "exists": False, "exported_at": None}
+    path = Path(backup_path)
+    exists = path.exists()
+    exported_at = None
+    if exists:
+        try:
+            import json
+            data = json.loads(path.read_text(encoding="utf-8"))
+            exported_at = data.get("exported_at")
+        except Exception:
+            pass
+    return {"configured": True, "path": str(path), "exists": exists, "exported_at": exported_at}
+
+
 def parse_csv_import(file_stream) -> list[dict]:
     text = file_stream.read()
     if isinstance(text, bytes):

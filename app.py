@@ -1,10 +1,11 @@
 import threading
 import webbrowser
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 
 import config
 import database
+import utils
 from routes.dashboard import dashboard_bp
 from routes.packages import packages_bp
 from routes.students import students_bp
@@ -24,6 +25,15 @@ def create_app():
     app.register_blueprint(students_bp)
     app.register_blueprint(submissions_bp)
     app.register_blueprint(settings_bp)
+
+    @app.after_request
+    def auto_backup_on_write(response):
+        if request.method == "POST" and response.status_code in (200, 302):
+            try:
+                utils.write_auto_backup()
+            except Exception:
+                pass
+        return response
 
     @app.route("/health")
     def health():
