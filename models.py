@@ -297,3 +297,165 @@ def get_dashboard_data():
 
     unassigned = students_by_pkg.get(None, [])
     return data, unassigned
+
+
+# ---------------------------------------------------------------------------
+# Backup / Restore
+# ---------------------------------------------------------------------------
+
+def export_all_data() -> dict:
+    conn = get_db()
+
+    packages = [dict(r) for r in conn.execute("SELECT * FROM visa_packages ORDER BY name").fetchall()]
+    slots    = [dict(r) for r in conn.execute("SELECT * FROM document_slots ORDER BY package_id, sort_order").fetchall()]
+    students = [dict(r) for r in conn.execute("SELECT * FROM students ORDER BY name").fetchall()]
+    subs     = [dict(r) for r in conn.execute("SELECT * FROM document_submissions").fetchall()]
+    settings = [dict(r) for r in conn.execute("SELECT * FROM settings").fetchall()]
+
+    conn.close()
+
+    pkg_map  = {p["id"]: p["name"] for p in packages}
+    slot_map = {s["id"]: {"package_name": pkg_map.get(s["package_id"], ""), "slot_name": s["name"]} for s in slots}
+
+    for s in slots:
+        s["package_name"] = pkg_map.get(s["package_id"], "")
+
+    for st in students:
+        st["package_name"] = pkg_map.get(st["package_id"], "")
+        st["submissions"] = []
+
+    student_map = {s["id"]: s for s in students}
+    for sub in subs:
+        sid = sub["student_id"]
+        if sid in student_map:
+            info = slot_map.get(sub["slot_id"], {})
+            sub["slot_name"]    = info.get("slot_name", "")
+            sub["package_name"] = info.get("package_name", "")
+            student_map[sid]["submissions"].append(sub)
+
+    return {
+        "version": 1,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "settings": settings,
+        "visa_packages": [
+            {
+                "name": p["name"],
+                "created_at": p["created_at"],
+                "slots": [
+                    {"name": s["name"], "is_required": s["is_required"], "sort_order": s["sort_order"]}
+                    for s in slots if s["package_id"] == p["id"]
+                ],
+            }
+            for p in packages
+        ],
+        "students": [
+            {
+                "name":         st["name"],
+                "email":        st["email"],
+                "package_name": st["package_name"],
+                "created_at":   st["created_at"],
+                "submissions": [
+                    {
+                        "slot_name":   sub["slot_name"],
+                        "status":      sub["status"],
+                        "filename":    sub["filename"],
+                        "stored_path": sub["stored_path"],
+                        "received_at": sub["received_at"],
+                        "notes":       sub["notes"],
+                    }
+                    for sub in st["submissions"]
+                ],
+            }
+            for st in students
+        ],
+    }
+
+
+def import_all_data(data: dict, replace: bool = False) -> dict:
+    conn = get_db()
+    imported = {"packages": 0, "slots": 0, "students": 0, "submissions": 0, "errors": []}
+
+    try:
+        if replace:
+            conn.execute("DELETE FROM document_submissions")
+            conn.execute("DELETE FROM students")
+            conn.execute("DELETE FROM document_slots")
+            conn.execute("DELETE FROM visa_packages")
+            conn.execute("DELETE FROM settings")
+
+        # Settings
+        for s in data.get("settings", []):
+            conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+                         (s["key"], s["value"]))
+
+        # Packages + slots
+        pkg_id_map = {}
+        for pkg in data.get("visa_packages", []):
+            existing = conn.execute("SELECT id FROM visa_packages WHERE name = ?", (pkg["name"],)).fetchone()
+            if existing:
+                pkg_id_map[pkg["name"]] = existing["id"]
+            else:
+                cur = conn.execute(
+                    "INSERT INTO visa_packages (name, created_at) VALUES (?, ?)",
+                    (pkg["name"], pkg.get("created_at", datetime.now(timezone.utc).isoformat()))
+                )
+                pkg_id_map[pkg["name"]] = cur.lastrowid
+                imported["packages"] += 1
+
+            pkg_id = pkg_id_map[pkg["name"]]
+            for slot in pkg.get("slots", []):
+                exists = conn.execute(
+                    "SELECT id FROM document_slots WHERE package_id = ? AND name = ?",
+                    (pkg_id, slot["name"])
+                ).fetchone()
+                if not exists:
+                    conn.execute(
+                        "INSERT INTO document_slots (package_id, name, is_required, sort_order) VALUES (?,?,?,?)",
+                        (pkg_id, slot["name"], slot.get("is_required", 1), slot.get("sort_order", 0))
+                    )
+                    imported["slots"] += 1
+
+        # Students + submissions
+        for st in data.get("students", []):
+            existing = conn.execute("SELECT id FROM students WHERE email = ?", (st["email"],)).fetchone()
+            if existing:
+                student_id = existing["id"]
+            else:
+                pkg_id = pkg_id_map.get(st.get("package_name", ""))
+                cur = conn.execute(
+                    "INSERT INTO students (name, email, package_id, created_at) VALUES (?,?,?,?)",
+                    (st["name"], st["email"], pkg_id,
+                     st.get("created_at", datetime.now(timezone.utc).isoformat()))
+                )
+                student_id = cur.lastrowid
+                imported["students"] += 1
+
+            pkg_name = st.get("package_name", "")
+            pkg_id   = pkg_id_map.get(pkg_name)
+
+            for sub in st.get("submissions", []):
+                slot_row = None
+                if pkg_id:
+                    slot_row = conn.execute(
+                        "SELECT id FROM document_slots WHERE package_id = ? AND name = ?",
+                        (pkg_id, sub["slot_name"])
+                    ).fetchone()
+                if not slot_row:
+                    continue
+                conn.execute("""
+                    INSERT OR REPLACE INTO document_submissions
+                        (student_id, slot_id, status, filename, stored_path, received_at, notes)
+                    VALUES (?,?,?,?,?,?,?)
+                """, (student_id, slot_row["id"], sub.get("status", "pending"),
+                      sub.get("filename"), sub.get("stored_path"),
+                      sub.get("received_at"), sub.get("notes")))
+                imported["submissions"] += 1
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+    return imported

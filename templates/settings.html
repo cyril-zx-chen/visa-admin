@@ -68,6 +68,60 @@
         </table>
       </div>
     </div>
+
+    <!-- Backup & Restore -->
+    <div class="card mt-3">
+      <div class="card-header">
+        <span class="card-header-title">
+          <i class="bi bi-cloud-arrow-down-fill me-2 text-muted"></i>Backup &amp; Restore
+        </span>
+      </div>
+      <div class="card-body p-4">
+
+        <!-- Export -->
+        <h6 class="fw-semibold mb-1" style="font-size:.875rem">Export data</h6>
+        <p class="text-muted mb-3" style="font-size:.83rem">
+          Downloads all packages, slots, students, submission statuses, notes, and settings
+          as a single JSON file. Keep this file safe — it does <strong>not</strong> include
+          uploaded document files. Back those up separately by copying the
+          <code>documents\</code> folder.
+        </p>
+        <a href="{{ url_for('settings.export_data') }}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-download me-1"></i> Download Backup JSON
+        </a>
+
+        <div class="divider"></div>
+
+        <!-- Import -->
+        <h6 class="fw-semibold mb-1" style="font-size:.875rem">Restore from backup</h6>
+        <p class="text-muted mb-3" style="font-size:.83rem">
+          Upload a previously exported JSON file to restore your data.
+          By default existing records are kept and only missing ones are added.
+          Tick <em>Replace all</em> to wipe everything first (useful on a fresh install).
+        </p>
+        <form method="POST" action="{{ url_for('settings.import_data') }}"
+              enctype="multipart/form-data">
+          <div class="mb-3">
+            <label class="form-label">Backup file (.json)</label>
+            <input type="file" class="form-control form-control-sm" name="backup_file"
+                   accept=".json" required>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="replace_existing"
+                   value="1" id="replace_existing">
+            <label class="form-check-label" for="replace_existing" style="font-size:.83rem">
+              Replace all existing data (wipe first)
+            </label>
+          </div>
+          <button type="submit" class="btn btn-warning btn-sm"
+                  data-confirm="Restore from backup? {% if True %}This will merge with existing data (or wipe it if Replace is checked).{% endif %}">
+            <i class="bi bi-upload me-1"></i> Restore
+          </button>
+        </form>
+
+      </div>
+    </div>
+
   </div>
 </div>
 {% endblock %}
