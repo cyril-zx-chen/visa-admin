@@ -294,6 +294,40 @@ a { text-decoration: none; }
 .pkg-collapse-btn { border: none; background: none; }
 .pkg-collapse-btn:focus { box-shadow: none; }
 
+/* Clickable stat cards */
+.stat-card-link {
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow .15s, transform .15s;
+}
+.stat-card-link:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  color: inherit;
+}
+
+/* Status filter buttons */
+.status-filter-btn {
+  font-size: .8rem;
+  font-weight: 500;
+  border-radius: 20px;
+  padding: .3rem .9rem;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  color: var(--text-muted);
+  transition: all .12s;
+}
+.status-filter-btn:hover {
+  border-color: var(--purple);
+  color: var(--purple);
+  background: #f5f3ff;
+}
+.status-filter-btn.active {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: #fff;
+}
+
 /* Clickable rows */
 .clickable-row { cursor: pointer; }
 .clickable-row:hover td { background: #eef2ff !important; }

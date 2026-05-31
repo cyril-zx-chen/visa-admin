@@ -12,25 +12,25 @@
   </a>
 </div>
 
-<!-- Stat cards -->
+<!-- Stat cards — Total Students and Visa Packages are links -->
 <div class="row g-3 mb-4">
   <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
+    <a href="{{ url_for('students.list_students') }}" class="stat-card stat-card-link">
       <div class="stat-icon purple"><i class="bi bi-people-fill"></i></div>
       <div>
         <div class="stat-value">{{ stats.students }}</div>
         <div class="stat-label">Total Students</div>
       </div>
-    </div>
+    </a>
   </div>
   <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
+    <a href="{{ url_for('packages.list_packages') }}" class="stat-card stat-card-link">
       <div class="stat-icon blue"><i class="bi bi-collection-fill"></i></div>
       <div>
         <div class="stat-value">{{ stats.packages }}</div>
         <div class="stat-label">Visa Packages</div>
       </div>
-    </div>
+    </a>
   </div>
   <div class="col-sm-6 col-xl-3">
     <div class="stat-card">
@@ -51,6 +51,22 @@
     </div>
   </div>
 </div>
+
+<!-- Global status filter -->
+{% if data %}
+  <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <span class="text-muted" style="font-size:.82rem; font-weight:600">Show:</span>
+    <button class="btn btn-sm status-filter-btn active" data-filter="all">
+      <i class="bi bi-list-ul me-1"></i> All students
+    </button>
+    <button class="btn btn-sm status-filter-btn" data-filter="incomplete">
+      <i class="bi bi-clock-fill me-1"></i> Incomplete only
+    </button>
+    <button class="btn btn-sm status-filter-btn" data-filter="complete">
+      <i class="bi bi-check-circle-fill me-1"></i> Complete only
+    </button>
+  </div>
+{% endif %}
 
 <!-- Package tables -->
 {% if not data and not unassigned %}
@@ -73,8 +89,7 @@
 
 {% for pkg_id, pkg_data in data.items() %}
   <div class="card mb-4">
-    <!-- Card header: collapse toggle | name | filter | edit -->
-    <div class="card-header flex-wrap gap-2" style="cursor:default">
+    <div class="card-header flex-wrap gap-2">
       <div class="d-flex align-items-center gap-2 flex-grow-1">
         <button class="btn btn-link p-0 pkg-collapse-btn"
                 data-bs-toggle="collapse"
@@ -108,7 +123,6 @@
       </div>
     </div>
 
-    <!-- Collapsible body -->
     <div class="collapse show pkg-collapse" id="pkg-body-{{ pkg_id }}">
       {% if not pkg_data.students %}
         <div class="empty-state py-4">
@@ -138,9 +152,22 @@
             </thead>
             <tbody>
               {% for student in pkg_data.students %}
+                {# Pre-compute required/received counts for data-status #}
+                {% set _rcv = namespace(v=0) %}
+                {% set _req = namespace(v=0) %}
+                {% for _slot in pkg_data.slots %}
+                  {% if _slot.is_required %}
+                    {% set _req.v = _req.v + 1 %}
+                    {% set _sub = pkg_data.submissions.get((student.id, _slot.id)) %}
+                    {% if _sub and _sub.status == 'received' %}{% set _rcv.v = _rcv.v + 1 %}{% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% set _row_status = 'complete' if (_req.v == 0 or _rcv.v >= _req.v) else 'incomplete' %}
+
                 {% set rcv = namespace(v=0) %}
                 {% set req = namespace(v=0) %}
                 <tr data-student="{{ student.name | lower }} {{ student.email | lower }}"
+                    data-status="{{ _row_status }}"
                     data-href="{{ url_for('students.student_detail', student_id=student.id) }}"
                     class="clickable-row">
                   <td>
@@ -224,25 +251,21 @@
 
 {% block extra_js %}
 <script>
-// Clickable rows → navigate to student detail
+// ── Clickable rows ────────────────────────────────────────────────
 document.querySelectorAll('.clickable-row').forEach(function (row) {
   row.addEventListener('click', function () {
     window.location.href = this.dataset.href;
   });
 });
 
-// Persist collapse state per package in localStorage
+// ── Collapse state persistence ────────────────────────────────────
 document.querySelectorAll('.pkg-collapse').forEach(function (el) {
   var key = 'dash-collapse-' + el.id;
-
-  // Restore saved state (collapsed)
   if (localStorage.getItem(key) === '0') {
     el.classList.remove('show');
     var btn = document.querySelector('[data-bs-target="#' + el.id + '"]');
     if (btn) btn.setAttribute('aria-expanded', 'false');
   }
-
-  // Save on hide/show
   el.addEventListener('hide.bs.collapse', function () {
     localStorage.setItem('dash-collapse-' + this.id, '0');
   });
@@ -251,36 +274,83 @@ document.querySelectorAll('.pkg-collapse').forEach(function (el) {
   });
 });
 
-// Per-package student filter
+// ── Per-package text filter ───────────────────────────────────────
 document.querySelectorAll('.pkg-filter').forEach(function (input) {
   input.addEventListener('input', function () {
     var term  = this.value.toLowerCase().trim();
     var table = document.getElementById(this.dataset.table);
     if (!table) return;
-    var noMatch = 0, total = 0;
-    table.querySelectorAll('tbody tr').forEach(function (row) {
+    var hidden = 0, total = 0;
+    table.querySelectorAll('tbody tr.clickable-row').forEach(function (row) {
       total++;
-      var match = !term || row.dataset.student.includes(term);
-      row.style.display = match ? '' : 'none';
-      if (!match) noMatch++;
+      var textMatch   = !term || row.dataset.student.includes(term);
+      var statusMatch = row.dataset.statusHidden !== '1';
+      var show = textMatch && statusMatch;
+      row.dataset.textHidden = textMatch ? '0' : '1';
+      row.style.display = show ? '' : 'none';
+      if (!show) hidden++;
     });
-    // Show/hide "no results" row
-    var existing = table.querySelector('.no-filter-results');
-    if (noMatch === total && total > 0 && term) {
-      if (!existing) {
-        var cols = table.querySelector('thead tr').children.length;
-        var tr   = document.createElement('tr');
-        tr.className = 'no-filter-results';
-        tr.innerHTML = '<td colspan="' + cols + '" class="text-center text-muted py-3" style="font-size:.85rem"><i class="bi bi-search me-1"></i>No students match "' + term + '"</td>';
-        table.querySelector('tbody').appendChild(tr);
-      } else {
-        existing.querySelector('td').innerHTML = '<i class="bi bi-search me-1"></i>No students match "' + term + '"';
-        existing.style.display = '';
-      }
-    } else if (existing) {
-      existing.style.display = 'none';
-    }
+    updateNoResults(table, hidden === total && total > 0 && term, term);
   });
 });
+
+// ── Global status filter ──────────────────────────────────────────
+var currentFilter = localStorage.getItem('dash-status-filter') || 'all';
+
+function applyStatusFilter(filter) {
+  currentFilter = filter;
+  localStorage.setItem('dash-status-filter', filter);
+
+  // Update button styles
+  document.querySelectorAll('.status-filter-btn').forEach(function (btn) {
+    var active = btn.dataset.filter === filter;
+    btn.classList.toggle('active', active);
+  });
+
+  // Show/hide rows
+  document.querySelectorAll('tbody tr.clickable-row').forEach(function (row) {
+    var statusMatch = filter === 'all' || row.dataset.status === filter;
+    var textMatch   = row.dataset.textHidden !== '1';
+    row.dataset.statusHidden = statusMatch ? '0' : '1';
+    row.style.display = (statusMatch && textMatch) ? '' : 'none';
+  });
+
+  // Update no-results placeholders per table
+  document.querySelectorAll('.dashboard-table').forEach(function (table) {
+    var rows = table.querySelectorAll('tbody tr.clickable-row');
+    var allHidden = Array.from(rows).every(function (r) { return r.style.display === 'none'; });
+    updateNoResults(table, allHidden && rows.length > 0, null);
+  });
+}
+
+function updateNoResults(table, show, term) {
+  var existing = table.querySelector('.no-filter-results');
+  if (show) {
+    var msg = term
+      ? '<i class="bi bi-search me-1"></i>No students match "' + term + '"'
+      : '<i class="bi bi-funnel me-1"></i>No students match this filter';
+    if (!existing) {
+      var cols = table.querySelector('thead tr').children.length;
+      var tr = document.createElement('tr');
+      tr.className = 'no-filter-results';
+      tr.innerHTML = '<td colspan="' + cols + '" class="text-center text-muted py-3" style="font-size:.85rem">' + msg + '</td>';
+      table.querySelector('tbody').appendChild(tr);
+    } else {
+      existing.querySelector('td').innerHTML = msg;
+      existing.style.display = '';
+    }
+  } else if (existing) {
+    existing.style.display = 'none';
+  }
+}
+
+document.querySelectorAll('.status-filter-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    applyStatusFilter(this.dataset.filter);
+  });
+});
+
+// Restore filter on load
+applyStatusFilter(currentFilter);
 </script>
 {% endblock %}
