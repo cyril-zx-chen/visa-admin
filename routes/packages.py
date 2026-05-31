@@ -54,7 +54,10 @@ def add_slot(pkg_id):
         flash("Slot name cannot be empty.", "danger")
         return redirect(url_for("packages.package_detail", pkg_id=pkg_id))
     try:
-        models.add_slot(pkg_id, name, is_required)
+        slot_id = models.add_slot(pkg_id, name, is_required)
+        # backfill a submission row for every student already enrolled in this package
+        for student in models.get_students_for_package(pkg_id):
+            models.create_submission(student["id"], slot_id)
         flash(f'Slot "{name}" added.', "success")
     except sqlite3.IntegrityError:
         flash(f'A slot named "{name}" already exists in this package.', "danger")
