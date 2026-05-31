@@ -140,7 +140,9 @@
               {% for student in pkg_data.students %}
                 {% set rcv = namespace(v=0) %}
                 {% set req = namespace(v=0) %}
-                <tr data-student="{{ student.name | lower }} {{ student.email | lower }}">
+                <tr data-student="{{ student.name | lower }} {{ student.email | lower }}"
+                    data-href="{{ url_for('students.student_detail', student_id=student.id) }}"
+                    class="clickable-row">
                   <td>
                     <a href="{{ url_for('students.student_detail', student_id=student.id) }}"
                        class="fw-semibold" style="color:var(--purple)">
@@ -222,10 +224,10 @@
 
 {% block extra_js %}
 <script>
-// Collapse chevron rotation
-document.querySelectorAll('.pkg-collapse-btn').forEach(function (btn) {
-  btn.addEventListener('click', function () {
-    // chevron direction is handled by CSS via aria-expanded
+// Clickable rows → navigate to student detail
+document.querySelectorAll('.clickable-row').forEach(function (row) {
+  row.addEventListener('click', function () {
+    window.location.href = this.dataset.href;
   });
 });
 

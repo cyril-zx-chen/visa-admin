@@ -294,6 +294,10 @@ a { text-decoration: none; }
 .pkg-collapse-btn { border: none; background: none; }
 .pkg-collapse-btn:focus { box-shadow: none; }
 
+/* Clickable rows */
+.clickable-row { cursor: pointer; }
+.clickable-row:hover td { background: #eef2ff !important; }
+
 .dashboard-table th.slot-header {
   max-width: 100px;
   overflow: hidden;
