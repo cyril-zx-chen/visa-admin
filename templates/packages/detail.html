@@ -4,7 +4,28 @@
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">{{ package.name }}</h1>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <h1 class="page-title mb-0" id="pkg-name-display">{{ package.name }}</h1>
+      <button class="btn btn-sm btn-outline-secondary" id="rename-toggle"
+              onclick="document.getElementById('rename-form').classList.toggle('d-none');
+                       document.getElementById('pkg-name-display').classList.toggle('d-none');
+                       document.getElementById('rename-toggle').classList.toggle('d-none');
+                       document.getElementById('rename-input').focus()">
+        <i class="bi bi-pencil-fill"></i>
+      </button>
+    </div>
+    <form method="POST" action="{{ url_for('packages.rename_package', pkg_id=package.id) }}"
+          id="rename-form" class="d-none d-flex gap-2 align-items-center mt-1">
+      <input type="text" name="name" id="rename-input" class="form-control form-control-sm"
+             value="{{ package.name }}" style="max-width:280px" required>
+      <button type="submit" class="btn btn-primary btn-sm">Save</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm"
+              onclick="document.getElementById('rename-form').classList.add('d-none');
+                       document.getElementById('pkg-name-display').classList.remove('d-none');
+                       document.getElementById('rename-toggle').classList.remove('d-none')">
+        Cancel
+      </button>
+    </form>
     <p class="page-subtitle">{{ slots | length }} slot{{ 's' if slots | length != 1 }} · {{ students | length }} student{{ 's' if students | length != 1 }} enrolled</p>
   </div>
   <div class="d-flex gap-2">

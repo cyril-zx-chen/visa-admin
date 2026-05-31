@@ -77,6 +77,20 @@ def toggle_slot_required(pkg_id, slot_id):
     return redirect(url_for("packages.package_detail", pkg_id=pkg_id))
 
 
+@packages_bp.route("/<int:pkg_id>/rename", methods=["POST"])
+def rename_package(pkg_id):
+    name = request.form.get("name", "").strip()
+    if not name:
+        flash("Package name cannot be empty.", "danger")
+        return redirect(url_for("packages.package_detail", pkg_id=pkg_id))
+    try:
+        models.rename_package(pkg_id, name)
+        flash(f'Package renamed to "{name}".', "success")
+    except sqlite3.IntegrityError:
+        flash(f'A package named "{name}" already exists.', "danger")
+    return redirect(url_for("packages.package_detail", pkg_id=pkg_id))
+
+
 @packages_bp.route("/<int:pkg_id>/copy", methods=["POST"])
 def copy_package(pkg_id):
     pkg = models.get_package(pkg_id)

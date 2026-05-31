@@ -48,6 +48,13 @@ def create_package(name):
     return pkg_id
 
 
+def rename_package(pkg_id, name):
+    conn = get_db()
+    conn.execute("UPDATE visa_packages SET name = ? WHERE id = ?", (name, pkg_id))
+    conn.commit()
+    conn.close()
+
+
 def delete_package(pkg_id):
     conn = get_db()
     conn.execute("DELETE FROM visa_packages WHERE id = ?", (pkg_id,))
