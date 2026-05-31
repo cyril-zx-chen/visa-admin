@@ -12,46 +12,35 @@
 <div class="row justify-content-center">
   <div class="col-lg-6">
 
-    <!-- Storage paths -->
+    <!-- Storage path -->
     <div class="card">
       <div class="card-header">
         <span class="card-header-title">
-          <i class="bi bi-folder-fill me-2 text-muted"></i>Storage Paths
+          <i class="bi bi-folder-fill me-2 text-muted"></i>Document Storage Folder
         </span>
       </div>
       <div class="card-body p-4">
+        <p class="text-muted mb-3" style="font-size:.875rem">
+          Where uploaded files are stored on disk. Each student gets their own subfolder.
+          The auto-backup JSON is saved here automatically after every change.
+        </p>
         <form method="POST" action="{{ url_for('settings.save_settings') }}">
-
           <div class="mb-4">
-            <label for="documents_dir" class="form-label">Document storage folder</label>
+            <label for="documents_dir" class="form-label">Storage folder path</label>
             <input type="text" class="form-control font-mono" id="documents_dir"
                    name="documents_dir" value="{{ docs_dir }}">
             <div class="form-text mt-1">
-              Where uploaded files are stored. Each student gets a subfolder.<br>
-              Windows example: <code>C:\Users\YourName\Documents\visa-docs</code>
+              Windows example: <code>C:\Users\YourName\Documents\visa-docs</code><br>
+              Auto-backup file: <code>{{ backup_info.path }}</code>
             </div>
           </div>
-
-          <div class="mb-4">
-            <label for="backup_path" class="form-label">Auto-backup file path</label>
-            <input type="text" class="form-control font-mono" id="backup_path"
-                   name="backup_path"
-                   value="{{ backup_info.path or '' }}"
-                   placeholder="e.g. C:\Users\YourName\OneDrive\visa_backup.json">
-            <div class="form-text mt-1">
-              The tool automatically saves all data here as JSON after every change.
-              To back up, just copy this file. Leave blank to disable auto-backup.<br>
-              Windows tip: point this to OneDrive or Google Drive for automatic cloud sync.
-            </div>
-          </div>
-
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">
               <i class="bi bi-floppy-fill me-1"></i> Save
             </button>
             <button type="button" class="btn btn-outline-secondary"
                     onclick="document.getElementById('documents_dir').value='{{ default_dir }}'">
-              Reset storage to default
+              Reset to default
             </button>
           </div>
         </form>
@@ -66,35 +55,38 @@
         </span>
       </div>
       <div class="card-body p-3">
-        {% if backup_info.configured %}
-          <table class="table table-sm mb-0" style="font-size:.855rem">
+        <table class="table table-sm mb-0" style="font-size:.855rem">
+          <tr>
+            <td class="text-muted" style="width:40%">Backup file</td>
+            <td><code style="font-size:.78rem">{{ backup_info.path }}</code></td>
+          </tr>
+          <tr>
+            <td class="text-muted">Status</td>
+            <td>
+              {% if backup_info.exists %}
+                <span class="status-badge-received"><i class="bi bi-check-circle-fill"></i> File exists</span>
+              {% else %}
+                <span class="status-badge-pending"><i class="bi bi-clock-fill"></i> Not yet created</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% if backup_info.exported_at %}
             <tr>
-              <td class="text-muted" style="width:40%">Backup file</td>
-              <td><code style="font-size:.78rem">{{ backup_info.path }}</code></td>
+              <td class="text-muted">Last backup</td>
+              <td style="font-size:.82rem">{{ backup_info.exported_at[:19].replace('T',' ') }} UTC</td>
             </tr>
-            <tr>
-              <td class="text-muted">File exists</td>
-              <td>
-                {% if backup_info.exists %}
-                  <span class="status-badge-received"><i class="bi bi-check-circle-fill"></i> Yes</span>
-                {% else %}
-                  <span class="status-badge-pending"><i class="bi bi-x-circle-fill"></i> Not yet created</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% if backup_info.exported_at %}
-              <tr>
-                <td class="text-muted">Last backup</td>
-                <td style="font-size:.82rem">{{ backup_info.exported_at[:19].replace('T', ' ') }} UTC</td>
-              </tr>
-            {% endif %}
-          </table>
-        {% else %}
-          <p class="text-muted mb-0" style="font-size:.855rem">
-            <i class="bi bi-info-circle me-1"></i>
-            No backup file configured. Set a path above to enable auto-backup.
+          {% endif %}
+        </table>
+        <div class="mt-3">
+          <p class="text-muted mb-2" style="font-size:.82rem">
+            The backup file is updated automatically after every change.
+            Use Export to save a copy elsewhere (e.g. OneDrive, USB drive).
           </p>
-        {% endif %}
+          <button class="btn btn-outline-primary btn-sm"
+                  data-bs-toggle="modal" data-bs-target="#exportModal">
+            <i class="bi bi-box-arrow-up me-1"></i> Export backup…
+          </button>
+        </div>
       </div>
     </div>
 
@@ -107,15 +99,12 @@
       </div>
       <div class="card-body p-4">
 
-        <!-- Restore from configured path -->
-        <h6 class="fw-semibold mb-1" style="font-size:.875rem">
-          Restore from backup file
-        </h6>
+        <h6 class="fw-semibold mb-1" style="font-size:.875rem">Restore from backup file</h6>
         <p class="text-muted mb-3" style="font-size:.83rem">
-          Reads from the backup file path configured above.
-          Use this after a reinstall — set the backup path first, then click Restore.
+          Reads <code>visa_admin_backup.json</code> from the configured documents folder.
+          On a fresh install: set the storage folder path above first, then click Restore.
         </p>
-        {% if backup_info.configured and backup_info.exists %}
+        {% if backup_info.exists %}
           <form method="POST" action="{{ url_for('settings.restore_from_path') }}" class="mb-1">
             <div class="form-check mb-3">
               <input class="form-check-input" type="checkbox" name="replace_existing"
@@ -132,22 +121,16 @@
         {% else %}
           <p class="text-muted" style="font-size:.83rem">
             <i class="bi bi-exclamation-circle me-1"></i>
-            {% if not backup_info.configured %}
-              Configure a backup file path above first.
-            {% else %}
-              Backup file does not exist at the configured path yet.
-            {% endif %}
+            No backup file found at <code>{{ backup_info.path }}</code>. Set the correct
+            storage folder above, or use the upload option below.
           </p>
         {% endif %}
 
         <div class="divider"></div>
 
-        <!-- Restore from upload (cross-machine fallback) -->
-        <h6 class="fw-semibold mb-1" style="font-size:.875rem">
-          Restore from uploaded file
-        </h6>
+        <h6 class="fw-semibold mb-1" style="font-size:.875rem">Restore from uploaded file</h6>
         <p class="text-muted mb-3" style="font-size:.83rem">
-          If transferring to a different machine, upload the JSON backup file directly.
+          Upload a <code>visa_admin_backup.json</code> file directly — useful when moving to a different machine.
         </p>
         <form method="POST" action="{{ url_for('settings.restore_from_upload') }}"
               enctype="multipart/form-data">
@@ -171,6 +154,36 @@
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Export modal -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-box-arrow-up me-2"></i>Export Backup</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('settings.export_to_path') }}">
+        <div class="modal-body">
+          <p class="text-muted mb-3" style="font-size:.875rem">
+            The backup will be written to the path below. Change it to save a copy
+            anywhere you like (e.g. OneDrive, a USB drive, your Desktop).
+          </p>
+          <label for="export_path" class="form-label">Save to</label>
+          <input type="text" class="form-control font-mono" id="export_path"
+                 name="export_path" value="{{ backup_info.path }}">
+          <div class="form-text mt-1">Leave unchanged to overwrite the existing auto-backup.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-download me-1"></i> Export
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}

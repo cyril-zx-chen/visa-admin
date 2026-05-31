@@ -10,7 +10,7 @@ settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
 
 @settings_bp.route("/", methods=["GET"])
 def settings_page():
-    docs_dir   = models.get_setting("documents_dir", str(config.DOCUMENTS_DIR))
+    docs_dir    = models.get_setting("documents_dir", str(config.DOCUMENTS_DIR))
     backup_info = utils.backup_file_info()
     return render_template(
         "settings.html",
@@ -22,29 +22,27 @@ def settings_page():
 
 @settings_bp.route("/", methods=["POST"])
 def save_settings():
-    docs_dir    = request.form.get("documents_dir", "").strip() or str(config.DOCUMENTS_DIR)
-    backup_path = request.form.get("backup_path", "").strip()
-
+    docs_dir = request.form.get("documents_dir", "").strip() or str(config.DOCUMENTS_DIR)
     try:
         p = Path(docs_dir)
         p.mkdir(parents=True, exist_ok=True)
         models.set_setting("documents_dir", str(p.resolve()))
+        flash("Settings saved.", "success")
     except Exception as e:
         flash(f"Invalid storage path: {e}", "danger")
-        return redirect(url_for("settings.settings_page"))
+    return redirect(url_for("settings.settings_page"))
 
-    if backup_path:
-        models.set_setting("backup_path", backup_path)
-        # write immediately so the file exists right away
-        try:
-            utils.write_auto_backup()
-            flash("Settings saved. Auto-backup file created.", "success")
-        except Exception as e:
-            flash(f"Settings saved but backup write failed: {e}", "warning")
-    else:
-        models.set_setting("backup_path", "")
-        flash("Settings saved.", "success")
 
+@settings_bp.route("/export-to-path", methods=["POST"])
+def export_to_path():
+    dest = request.form.get("export_path", "").strip()
+    if not dest:
+        dest = str(utils.default_backup_path())
+    try:
+        utils.write_backup_to(dest)
+        flash(f"Backup exported to: {dest}", "success")
+    except Exception as e:
+        flash(f"Export failed: {e}", "danger")
     return redirect(url_for("settings.settings_page"))
 
 
@@ -53,7 +51,7 @@ def restore_from_path():
     replace = request.form.get("replace_existing") == "1"
     data = utils.read_backup_file()
     if data is None:
-        flash("Backup file not found at the configured path.", "danger")
+        flash(f"Backup file not found at: {utils.default_backup_path()}", "danger")
         return redirect(url_for("settings.settings_page"))
     try:
         result = models.import_all_data(data, replace=replace)

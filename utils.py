@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -22,6 +23,10 @@ def get_documents_dir() -> Path:
     return config.DOCUMENTS_DIR
 
 
+def default_backup_path() -> Path:
+    return get_documents_dir() / "visa_admin_backup.json"
+
+
 def make_student_dir(student_name: str) -> Path:
     folder = get_documents_dir() / to_folder_name(student_name)
     folder.mkdir(parents=True, exist_ok=True)
@@ -39,45 +44,39 @@ def stored_file_path(student_name: str, slot_name: str, original_filename: str,
 
 
 def write_auto_backup() -> None:
-    import json
-    from models import get_setting, export_all_data
-    backup_path = get_setting("backup_path")
-    if not backup_path:
-        return
-    path = Path(backup_path)
+    from models import export_all_data
+    path = default_backup_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     data = export_all_data()
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def read_backup_file() -> dict | None:
-    import json
-    from models import get_setting
-    backup_path = get_setting("backup_path")
-    if not backup_path:
-        return None
-    path = Path(backup_path)
-    if not path.exists():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))
+def write_backup_to(dest: str | Path) -> None:
+    from models import export_all_data
+    path = Path(dest)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = export_all_data()
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 def backup_file_info() -> dict:
-    from models import get_setting
-    backup_path = get_setting("backup_path")
-    if not backup_path:
-        return {"configured": False, "path": None, "exists": False, "exported_at": None}
-    path = Path(backup_path)
+    path = default_backup_path()
     exists = path.exists()
     exported_at = None
     if exists:
         try:
-            import json
             data = json.loads(path.read_text(encoding="utf-8"))
             exported_at = data.get("exported_at")
         except Exception:
             pass
-    return {"configured": True, "path": str(path), "exists": exists, "exported_at": exported_at}
+    return {"path": str(path), "exists": exists, "exported_at": exported_at}
+
+
+def read_backup_file() -> dict | None:
+    path = default_backup_path()
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def parse_csv_import(file_stream) -> list[dict]:
