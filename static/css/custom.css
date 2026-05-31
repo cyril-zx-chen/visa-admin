@@ -288,6 +288,12 @@ a { text-decoration: none; }
 .status-pending-required { color: #ef4444; font-size: 1.05rem; }
 .status-pending-optional { color: #cbd5e1; font-size: 1.05rem; }
 
+/* Collapse chevron */
+.collapse-chevron { transition: transform .2s ease; }
+.pkg-collapse-btn[aria-expanded="false"] .collapse-chevron { transform: rotate(-90deg); }
+.pkg-collapse-btn { border: none; background: none; }
+.pkg-collapse-btn:focus { box-shadow: none; }
+
 .dashboard-table th.slot-header {
   max-width: 100px;
   overflow: hidden;

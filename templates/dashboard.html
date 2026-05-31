@@ -73,95 +73,121 @@
 
 {% for pkg_id, pkg_data in data.items() %}
   <div class="card mb-4">
-    <div class="card-header">
-      <div class="d-flex align-items-center gap-2">
+    <!-- Card header: collapse toggle | name | filter | edit -->
+    <div class="card-header flex-wrap gap-2" style="cursor:default">
+      <div class="d-flex align-items-center gap-2 flex-grow-1">
+        <button class="btn btn-link p-0 pkg-collapse-btn"
+                data-bs-toggle="collapse"
+                data-bs-target="#pkg-body-{{ pkg_id }}"
+                aria-expanded="true"
+                style="color:var(--text-muted); line-height:1">
+          <i class="bi bi-chevron-down collapse-chevron"></i>
+        </button>
         <i class="bi bi-collection-fill text-muted"></i>
         <span class="card-header-title">{{ pkg_data.package.name }}</span>
-        <span class="badge bg-secondary ms-1">{{ pkg_data.students | length }} student{{ 's' if pkg_data.students | length != 1 }}</span>
+        <span class="badge bg-secondary">
+          {{ pkg_data.students | length }} student{{ 's' if pkg_data.students | length != 1 }}
+        </span>
       </div>
-      <a href="{{ url_for('packages.package_detail', pkg_id=pkg_id) }}"
-         class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-pencil me-1"></i> Edit Package
-      </a>
+
+      <div class="d-flex align-items-center gap-2">
+        {% if pkg_data.students %}
+          <div class="search-wrapper" style="width:190px">
+            <i class="bi bi-search"></i>
+            <input type="text"
+                   class="form-control form-control-sm pkg-filter"
+                   data-table="pkg-table-{{ pkg_id }}"
+                   placeholder="Filter students…"
+                   onclick="event.stopPropagation()">
+          </div>
+        {% endif %}
+        <a href="{{ url_for('packages.package_detail', pkg_id=pkg_id) }}"
+           class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+      </div>
     </div>
 
-    {% if not pkg_data.students %}
-      <div class="empty-state py-4">
-        <i class="bi bi-person-plus" style="font-size:1.8rem; color:var(--border)"></i>
-        <p class="mt-2 mb-0" style="color:var(--text-muted); font-size:.83rem">
-          No students enrolled. <a href="{{ url_for('students.import_form') }}">Import students</a> to assign them here.
-        </p>
-      </div>
-    {% else %}
-      <div class="table-responsive">
-        <table class="table table-card dashboard-table mb-0">
-          <thead>
-            <tr>
-              <th style="min-width:160px">Student</th>
-              {% for slot in pkg_data.slots %}
-                <th class="text-center slot-header"
-                    data-bs-toggle="tooltip"
-                    title="{{ slot.name }}{% if not slot.is_required %} (optional){% endif %}">
-                  {{ slot.name | truncate(13, True, '…') }}
-                  {% if not slot.is_required %}
-                    <span class="d-block" style="font-size:.6rem; color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0">opt</span>
-                  {% endif %}
-                </th>
-              {% endfor %}
-              <th class="text-center" style="width:90px">Progress</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for student in pkg_data.students %}
-              {% set rcv = namespace(v=0) %}
-              {% set req = namespace(v=0) %}
+    <!-- Collapsible body -->
+    <div class="collapse show pkg-collapse" id="pkg-body-{{ pkg_id }}">
+      {% if not pkg_data.students %}
+        <div class="empty-state py-4">
+          <i class="bi bi-person-plus" style="font-size:1.8rem; color:var(--border)"></i>
+          <p class="mt-2 mb-0" style="color:var(--text-muted); font-size:.83rem">
+            No students enrolled. <a href="{{ url_for('students.import_form') }}">Import students</a> to assign them here.
+          </p>
+        </div>
+      {% else %}
+        <div class="table-responsive">
+          <table class="table table-card dashboard-table mb-0" id="pkg-table-{{ pkg_id }}">
+            <thead>
               <tr>
-                <td>
-                  <a href="{{ url_for('students.student_detail', student_id=student.id) }}"
-                     class="fw-semibold" style="color:var(--purple)">
-                    {{ student.name }}
-                  </a>
-                  <div class="text-muted" style="font-size:.72rem">{{ student.email }}</div>
-                </td>
-
+                <th style="min-width:160px">Student</th>
                 {% for slot in pkg_data.slots %}
-                  {% set sub = pkg_data.submissions.get((student.id, slot.id)) %}
-                  {% if slot.is_required %}{% set req.v = req.v + 1 %}{% endif %}
-                  <td class="text-center">
-                    {% if sub and sub.status == 'received' %}
-                      {% set rcv.v = rcv.v + 1 %}
-                      {% if sub.filename %}
-                        <i class="bi bi-check-circle-fill status-received-file"
-                           data-bs-toggle="tooltip" title="{{ sub.filename }}"></i>
+                  <th class="text-center slot-header"
+                      data-bs-toggle="tooltip"
+                      title="{{ slot.name }}{% if not slot.is_required %} (optional){% endif %}">
+                    {{ slot.name | truncate(13, True, '…') }}
+                    {% if not slot.is_required %}
+                      <span class="d-block" style="font-size:.6rem; color:var(--text-muted); font-weight:400; text-transform:none; letter-spacing:0">opt</span>
+                    {% endif %}
+                  </th>
+                {% endfor %}
+                <th class="text-center" style="width:90px">Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for student in pkg_data.students %}
+                {% set rcv = namespace(v=0) %}
+                {% set req = namespace(v=0) %}
+                <tr data-student="{{ student.name | lower }} {{ student.email | lower }}">
+                  <td>
+                    <a href="{{ url_for('students.student_detail', student_id=student.id) }}"
+                       class="fw-semibold" style="color:var(--purple)">
+                      {{ student.name }}
+                    </a>
+                    <div class="text-muted" style="font-size:.72rem">{{ student.email }}</div>
+                  </td>
+
+                  {% for slot in pkg_data.slots %}
+                    {% set sub = pkg_data.submissions.get((student.id, slot.id)) %}
+                    {% if slot.is_required %}{% set req.v = req.v + 1 %}{% endif %}
+                    <td class="text-center">
+                      {% if sub and sub.status == 'received' %}
+                        {% set rcv.v = rcv.v + 1 %}
+                        {% if sub.filename %}
+                          <i class="bi bi-check-circle-fill status-received-file"
+                             data-bs-toggle="tooltip" title="{{ sub.filename }}"></i>
+                        {% else %}
+                          <i class="bi bi-check-circle status-received-nofile"
+                             data-bs-toggle="tooltip" title="Marked received (no file)"></i>
+                        {% endif %}
+                      {% elif slot.is_required %}
+                        <i class="bi bi-x-circle-fill status-pending-required"></i>
                       {% else %}
-                        <i class="bi bi-check-circle status-received-nofile"
-                           data-bs-toggle="tooltip" title="Marked received (no file)"></i>
+                        <i class="bi bi-dash-circle status-pending-optional"></i>
                       {% endif %}
-                    {% elif slot.is_required %}
-                      <i class="bi bi-x-circle-fill status-pending-required"></i>
+                    </td>
+                  {% endfor %}
+
+                  <td class="text-center">
+                    {% if req.v > 0 %}
+                      {% if rcv.v >= req.v %}
+                        <span class="badge" style="background:#dcfce7;color:#15803d">{{ rcv.v }}/{{ req.v }}</span>
+                      {% else %}
+                        <span class="badge" style="background:#fee2e2;color:#b91c1c">{{ rcv.v }}/{{ req.v }}</span>
+                      {% endif %}
                     {% else %}
-                      <i class="bi bi-dash-circle status-pending-optional"></i>
+                      <span class="text-muted">—</span>
                     {% endif %}
                   </td>
-                {% endfor %}
-
-                <td class="text-center">
-                  {% if req.v > 0 %}
-                    {% if rcv.v >= req.v %}
-                      <span class="badge" style="background:#dcfce7;color:#15803d">{{ rcv.v }}/{{ req.v }}</span>
-                    {% else %}
-                      <span class="badge" style="background:#fee2e2;color:#b91c1c">{{ rcv.v }}/{{ req.v }}</span>
-                    {% endif %}
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
   </div>
 {% endfor %}
 
@@ -192,4 +218,67 @@
     </div>
   </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Collapse chevron rotation
+document.querySelectorAll('.pkg-collapse-btn').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    // chevron direction is handled by CSS via aria-expanded
+  });
+});
+
+// Persist collapse state per package in localStorage
+document.querySelectorAll('.pkg-collapse').forEach(function (el) {
+  var key = 'dash-collapse-' + el.id;
+
+  // Restore saved state (collapsed)
+  if (localStorage.getItem(key) === '0') {
+    el.classList.remove('show');
+    var btn = document.querySelector('[data-bs-target="#' + el.id + '"]');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  // Save on hide/show
+  el.addEventListener('hide.bs.collapse', function () {
+    localStorage.setItem('dash-collapse-' + this.id, '0');
+  });
+  el.addEventListener('show.bs.collapse', function () {
+    localStorage.setItem('dash-collapse-' + this.id, '1');
+  });
+});
+
+// Per-package student filter
+document.querySelectorAll('.pkg-filter').forEach(function (input) {
+  input.addEventListener('input', function () {
+    var term  = this.value.toLowerCase().trim();
+    var table = document.getElementById(this.dataset.table);
+    if (!table) return;
+    var noMatch = 0, total = 0;
+    table.querySelectorAll('tbody tr').forEach(function (row) {
+      total++;
+      var match = !term || row.dataset.student.includes(term);
+      row.style.display = match ? '' : 'none';
+      if (!match) noMatch++;
+    });
+    // Show/hide "no results" row
+    var existing = table.querySelector('.no-filter-results');
+    if (noMatch === total && total > 0 && term) {
+      if (!existing) {
+        var cols = table.querySelector('thead tr').children.length;
+        var tr   = document.createElement('tr');
+        tr.className = 'no-filter-results';
+        tr.innerHTML = '<td colspan="' + cols + '" class="text-center text-muted py-3" style="font-size:.85rem"><i class="bi bi-search me-1"></i>No students match "' + term + '"</td>';
+        table.querySelector('tbody').appendChild(tr);
+      } else {
+        existing.querySelector('td').innerHTML = '<i class="bi bi-search me-1"></i>No students match "' + term + '"';
+        existing.style.display = '';
+      }
+    } else if (existing) {
+      existing.style.display = 'none';
+    }
+  });
+});
+</script>
 {% endblock %}
