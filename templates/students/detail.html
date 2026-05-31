@@ -55,7 +55,8 @@
           <tr>
             <th>Document</th>
             <th class="text-center" style="width:120px">Status</th>
-            <th>File</th>
+            <th>Uploaded file</th>
+            <th>Saved as</th>
             <th style="width:140px">Received</th>
             <th style="width:220px">Notes</th>
             <th class="text-center" style="width:200px">Actions</th>
@@ -85,18 +86,25 @@
                   </span>
                 {% endif %}
               </td>
-              <td>
-                {% if sub.stored_path and sub.filename %}
+              <td style="font-size:.83rem">
+                {% if sub.filename %}
+                  <span class="text-muted">{{ sub.filename | truncate(30) }}</span>
+                {% elif sub.status == 'received' %}
+                  <span class="text-muted"><i class="bi bi-check2 me-1"></i>Marked manually</span>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td style="font-size:.83rem">
+                {% if sub.stored_path %}
+                  {% set saved_name = sub.stored_path.replace('\\', '/').split('/')[-1] %}
                   <a href="{{ url_for('submissions.download_file', sub_id=sub.id) }}"
                      class="d-flex align-items-center gap-1"
-                     style="color:var(--purple); font-size:.83rem">
-                    <i class="bi bi-file-earmark-arrow-down"></i>
-                    {{ sub.filename | truncate(28) }}
+                     style="color:var(--purple)"
+                     data-bs-toggle="tooltip" title="{{ saved_name }}">
+                    <i class="bi bi-file-earmark-arrow-down flex-shrink-0"></i>
+                    <span class="font-mono" style="font-size:.78rem">{{ saved_name | truncate(28) }}</span>
                   </a>
-                {% elif sub.status == 'received' %}
-                  <span class="text-muted" style="font-size:.8rem">
-                    <i class="bi bi-check2 me-1"></i>Marked manually
-                  </span>
                 {% else %}
                   <span class="text-muted">—</span>
                 {% endif %}
