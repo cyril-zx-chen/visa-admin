@@ -8,6 +8,6 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Server starting at http://localhost:5000
+echo Server starting at http://localhost:5001
 echo Close this window to stop.
 uv run python app.py
