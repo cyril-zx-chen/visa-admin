@@ -64,6 +64,43 @@ def create_student():
         return redirect(url_for("students.new_student_form"))
 
 
+@students_bp.route("/<int:student_id>/edit", methods=["GET"])
+def edit_student_form(student_id):
+    student = models.get_student(student_id)
+    if student is None:
+        flash("Student not found.", "danger")
+        return redirect(url_for("students.list_students"))
+    packages = models.get_all_packages()
+    return render_template("students/edit.html", student=student, packages=packages)
+
+
+@students_bp.route("/<int:student_id>/edit", methods=["POST"])
+def update_student(student_id):
+    student = models.get_student(student_id)
+    if student is None:
+        flash("Student not found.", "danger")
+        return redirect(url_for("students.list_students"))
+
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip()
+    package_id = request.form.get("package_id", "").strip()
+    pkg_id = int(package_id) if package_id else None
+
+    if not name or not email:
+        flash("Name and email are required.", "danger")
+        return redirect(url_for("students.edit_student_form", student_id=student_id))
+
+    try:
+        models.update_student(student_id, name, email, pkg_id)
+        if name != student["name"]:
+            utils.make_student_dir(name)
+        flash(f'Student updated.', "success")
+        return redirect(url_for("students.student_detail", student_id=student_id))
+    except sqlite3.IntegrityError:
+        flash(f'Email "{email}" is already used by another student.', "danger")
+        return redirect(url_for("students.edit_student_form", student_id=student_id))
+
+
 @students_bp.route("/import", methods=["GET"])
 def import_form():
     return render_template("students/import.html", results=None)

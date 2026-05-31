@@ -57,6 +57,12 @@
                      class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Edit">
                     <i class="bi bi-pencil-fill"></i>
                   </a>
+                  <form method="POST" action="{{ url_for('packages.copy_package', pkg_id=pkg.id) }}" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"
+                            data-bs-toggle="tooltip" title="Duplicate package">
+                      <i class="bi bi-copy"></i>
+                    </button>
+                  </form>
                   <form method="POST" action="{{ url_for('packages.delete_package', pkg_id=pkg.id) }}" class="d-inline">
                     {% if c.students > 0 %}
                       <button type="button" class="btn btn-sm btn-outline-danger" disabled

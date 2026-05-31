@@ -77,6 +77,18 @@ def toggle_slot_required(pkg_id, slot_id):
     return redirect(url_for("packages.package_detail", pkg_id=pkg_id))
 
 
+@packages_bp.route("/<int:pkg_id>/copy", methods=["POST"])
+def copy_package(pkg_id):
+    pkg = models.get_package(pkg_id)
+    if pkg is None:
+        flash("Package not found.", "danger")
+        return redirect(url_for("packages.list_packages"))
+    new_id = models.copy_package(pkg_id)
+    new_pkg = models.get_package(new_id)
+    flash(f'Package copied as "{new_pkg["name"]}".', "success")
+    return redirect(url_for("packages.package_detail", pkg_id=new_id))
+
+
 @packages_bp.route("/<int:pkg_id>/delete", methods=["POST"])
 def delete_package(pkg_id):
     students = models.get_students_for_package(pkg_id)

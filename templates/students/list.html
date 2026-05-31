@@ -104,6 +104,10 @@
                      class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="View">
                     <i class="bi bi-eye-fill"></i>
                   </a>
+                  <a href="{{ url_for('students.edit_student_form', student_id=s.id) }}"
+                     class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="Edit">
+                    <i class="bi bi-pencil-fill"></i>
+                  </a>
                   <button type="button" class="btn btn-sm btn-outline-danger"
                           data-bs-toggle="modal" data-bs-target="#deleteModal{{ s.id }}"
                           title="Delete">

@@ -97,6 +97,32 @@ def add_slot(pkg_id, name, is_required):
     return slot_id
 
 
+def copy_package(pkg_id) -> int:
+    conn = get_db()
+    pkg = conn.execute("SELECT * FROM visa_packages WHERE id = ?", (pkg_id,)).fetchone()
+    slots = conn.execute(
+        "SELECT * FROM document_slots WHERE package_id = ? ORDER BY sort_order", (pkg_id,)
+    ).fetchall()
+
+    base_name = f"Copy of {pkg['name']}"
+    name = base_name
+    suffix = 2
+    while conn.execute("SELECT 1 FROM visa_packages WHERE name = ?", (name,)).fetchone():
+        name = f"{base_name} ({suffix})"
+        suffix += 1
+
+    cur = conn.execute("INSERT INTO visa_packages (name) VALUES (?)", (name,))
+    new_pkg_id = cur.lastrowid
+    for slot in slots:
+        conn.execute(
+            "INSERT INTO document_slots (package_id, name, is_required, sort_order) VALUES (?,?,?,?)",
+            (new_pkg_id, slot["name"], slot["is_required"], slot["sort_order"])
+        )
+    conn.commit()
+    conn.close()
+    return new_pkg_id
+
+
 def delete_slot(slot_id):
     conn = get_db()
     conn.execute("DELETE FROM document_slots WHERE id = ?", (slot_id,))
@@ -140,6 +166,39 @@ def get_student(student_id):
     """, (student_id,)).fetchone()
     conn.close()
     return row
+
+
+def update_student(student_id, name, email, new_package_id):
+    conn = get_db()
+    student = conn.execute("SELECT * FROM students WHERE id = ?", (student_id,)).fetchone()
+    old_package_id = student["package_id"]
+
+    conn.execute(
+        "UPDATE students SET name = ?, email = ?, package_id = ? WHERE id = ?",
+        (name, email, new_package_id, student_id)
+    )
+
+    if new_package_id != old_package_id:
+        # Remove submissions tied to the old package's slots
+        if old_package_id:
+            conn.execute("""
+                DELETE FROM document_submissions
+                WHERE student_id = ?
+                  AND slot_id IN (SELECT id FROM document_slots WHERE package_id = ?)
+            """, (student_id, old_package_id))
+        # Create pending submissions for the new package's slots
+        if new_package_id:
+            slots = conn.execute(
+                "SELECT id FROM document_slots WHERE package_id = ?", (new_package_id,)
+            ).fetchall()
+            for slot in slots:
+                conn.execute(
+                    "INSERT OR IGNORE INTO document_submissions (student_id, slot_id) VALUES (?,?)",
+                    (student_id, slot["id"])
+                )
+
+    conn.commit()
+    conn.close()
 
 
 def create_student(name, email, package_id):

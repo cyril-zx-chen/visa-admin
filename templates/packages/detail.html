@@ -7,9 +7,16 @@
     <h1 class="page-title">{{ package.name }}</h1>
     <p class="page-subtitle">{{ slots | length }} slot{{ 's' if slots | length != 1 }} · {{ students | length }} student{{ 's' if students | length != 1 }} enrolled</p>
   </div>
-  <a href="{{ url_for('packages.list_packages') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i> All Packages
-  </a>
+  <div class="d-flex gap-2">
+    <form method="POST" action="{{ url_for('packages.copy_package', pkg_id=package.id) }}">
+      <button type="submit" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-copy me-1"></i> Duplicate
+      </button>
+    </form>
+    <a href="{{ url_for('packages.list_packages') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> All Packages
+    </a>
+  </div>
 </div>
 
 <div class="row g-3">
